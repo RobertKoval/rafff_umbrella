@@ -54,12 +54,12 @@ if [[ -n $(git status --porcelain) ]]; then
     
     if [[ "$AUTO_COMMIT" == true ]]; then
         echo "${YELLOW}📝 Committing updated refs...${NC}"
-        git add raff_backend raff_iOS
+        git add rafff_backend rafff_iOS
         git commit -m "chore: sync submodule refs"
         echo "${GREEN}✓ Refs committed${NC}"
     else
         echo "   Run with --commit to auto-commit, or manually:"
-        echo "   git add raff_backend raff_iOS"
+        echo "   git add rafff_backend rafff_iOS"
         echo "   git commit -m 'chore: sync submodule refs'"
     fi
 else

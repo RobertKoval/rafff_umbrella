@@ -15,8 +15,8 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 SPEC_FILE="$PROJECT_ROOT/shared/api-spec/openapi.yaml"
 
 # Output paths
-BACKEND_TYPES="$PROJECT_ROOT/raff_backend/src/types/api.generated.ts"
-IOS_TYPES="$PROJECT_ROOT/raff_iOS/Sources/API/Models.generated.swift"
+BACKEND_TYPES="$PROJECT_ROOT/rafff_backend/src/types/api.generated.ts"
+IOS_TYPES="$PROJECT_ROOT/rafff_iOS/Sources/API/Models.generated.swift"
 
 # Colors
 RED='\033[0;31m'

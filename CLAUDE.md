@@ -32,7 +32,7 @@ See @SPECIFICATION.md for full product requirements.
         │                                   │
         ▼                                   ▼
 ┌───────────────────────┐       ┌───────────────────────┐
-│  raff_backend/        │       │  raff_iOS/            │
+│  rafff_backend/       │       │  rafff_iOS/           │
 │  (submodule)          │       │  (submodule)          │
 │  • Next.js server     │       │  • SwiftUI client     │
 │  • Admin panel        │       │  • TCA architecture   │

@@ -33,8 +33,8 @@ Monorepo orchestrating **Rafff** - a content management backend with iOS client.
 
 | Submodule | Repository |
 |-----------|------------|
-| `raff_backend` | https://github.com/RobertKoval/rafff_backend |
-| `raff_iOS` | https://github.com/RobertKoval/rafff_iOS |
+| `rafff_backend` | https://github.com/RobertKoval/rafff_backend |
+| `rafff_iOS` | https://github.com/RobertKoval/rafff_iOS |
 
 ## Commands
 
@@ -59,14 +59,14 @@ git submodule update --init --recursive
 git submodule update --remote
 
 # Work in a submodule
-cd raff_backend
+cd rafff_backend
 git checkout main
 git pull
 # ... make changes, commit, push ...
 cd ..
 
 # Update umbrella to point to new submodule commit
-git add raff_backend
+git add rafff_backend
 git commit -m "chore: update backend ref"
 git push
 ```
@@ -97,13 +97,13 @@ git push
 - Commits umbrella changes
 
 ### Backend Ralph
-- Works only in `raff_backend/`
+- Works only in `rafff_backend/`
 - Uses local `plan.json` and `dev_scripts/`
 - Commits directly to backend repo
 - Cannot affect iOS code
 
 ### iOS Ralph
-- Works only in `raff_iOS/`
+- Works only in `rafff_iOS/`
 - Uses local `plan.json` and `dev_scripts/`
 - Commits directly to iOS repo
 - Cannot affect backend code
@@ -113,14 +113,14 @@ git push
 1. **Umbrella agent** updates `shared/api-spec/openapi.yaml`
 2. Run `./scripts/generate-types.sh`
 3. Generated types appear in:
-   - `raff_backend/src/types/api.generated.ts`
-   - `raff_iOS/Sources/API/Models.generated.swift`
+   - `rafff_backend/src/types/api.generated.ts`
+   - `rafff_iOS/Sources/API/Models.generated.swift`
 4. **Backend Ralph** implements endpoint matching generated types
 5. **iOS Ralph** implements client using generated models
 6. **Result:** API contract enforced, no drift possible
 
 ## Related Documentation
 
-- [SPECIFICATION.DRAFT.md](./SPECIFICATION.DRAFT.md) - Product specification (WIP)
+- [SPECIFICATION.md](./SPECIFICATION.md) - Product specification (v1.0)
 - [CLAUDE.md](./CLAUDE.md) - Agent context and guidelines
-- [dev_scripts/RALPH_PROMPT.md](./dev_scripts/RALPH_PROMPT.md) - Ralph agent instructions
+- [TODO.md](./TODO.md) - Project progress checklist

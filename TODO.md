@@ -16,12 +16,12 @@
 - [x] **CLAUDE.md for umbrella** - fill with cross-project context
 - [ ] **CLAUDE.md for backend** - Next.js specific agent instructions
 - [ ] **CLAUDE.md for iOS** - SwiftUI specific agent instructions
-- [ ] **Backend Ralph setup** - `raff_backend/dev_scripts/` with:
+- [ ] **Backend Ralph setup** - `rafff_backend/dev_scripts/` with:
   - [ ] ralph.sh
   - [ ] RALPH_PROMPT.md (backend-specific)
   - [ ] setup-hooks.sh
   - [ ] plan.json
-- [ ] **iOS Ralph setup** - `raff_iOS/dev_scripts/` with:
+- [ ] **iOS Ralph setup** - `rafff_iOS/dev_scripts/` with:
   - [ ] ralph.sh
   - [ ] RALPH_PROMPT.md (iOS-specific)
   - [ ] setup-hooks.sh
@@ -29,11 +29,11 @@
 
 ## 🔲 Actual Projects
 
-- [ ] **Backend project** - `npx create-next-app@latest` in `raff_backend/`
-- [ ] **iOS project** - Xcode new SwiftUI project in `raff_iOS/`
+- [ ] **Backend project** - `npx create-next-app@latest` in `rafff_backend/`
+- [ ] **iOS project** - Xcode new SwiftUI project in `rafff_iOS/`
 - [ ] **Generated type targets**:
-  - [ ] `raff_backend/src/types/` for TypeScript
-  - [ ] `raff_iOS/Sources/API/` for Swift
+  - [ ] `rafff_backend/src/types/` for TypeScript
+  - [ ] `rafff_iOS/Sources/API/` for Swift
 
 ## ✅ Specification
 

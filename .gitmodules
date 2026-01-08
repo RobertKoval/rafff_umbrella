@@ -1,0 +1,6 @@
+[submodule "raff_backend"]
+	path = raff_backend
+	url = https://github.com/RobertKoval/rafff_backend.git
+[submodule "raff_iOS"]
+	path = raff_iOS
+	url = https://github.com/RobertKoval/rafff_iOS.git

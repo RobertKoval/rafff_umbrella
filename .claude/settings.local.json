@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./scripts/validate-api.sh:*)",
+      "Bash(git add:*)",
+      "Bash(cat:*)",
+      "Bash(git submodule:*)",
+      "Bash(git mv:*)",
+      "Bash(git commit:*)",
+      "WebSearch"
+    ]
+  }
+}

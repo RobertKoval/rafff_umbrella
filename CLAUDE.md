@@ -14,10 +14,10 @@ See @SPECIFICATION.md for full product requirements.
 
 | Component | Technology |
 |-----------|------------|
-| **Backend** | Next.js 16, Prisma 7, Zod 4, Tailwind, shadcn/ui |
-| **iOS** | SwiftUI, TCA (The Composable Architecture), iOS 18+ |
+| **Backend** | Next.js 16, Prisma 7, PostgreSQL, Zod 4, Tailwind, shadcn/ui |
+| **iOS** | SwiftUI, TCA (The Composable Architecture), RevenueCat, iOS 18+ |
 | **API Contract** | OpenAPI 3.1 (`shared/api-spec/openapi.yaml`) |
-| **Testing** | Vitest, Playwright, Stryker (backend) / Swift Testing, Mutter (iOS) |
+| **Testing** | Vitest, Playwright, Stryker (backend) / Swift Testing, ViewInspector, Mutter (iOS) |
 | **Deployment** | Docker on VPS |
 
 ## Architecture
@@ -126,32 +126,43 @@ chore: sync submodule refs
 
 ## API Endpoints Summary
 
-**User-facing (iOS):**
-- `POST /auth/apple` - Sign in with Apple
-- `GET /content/levels` - List levels
-- `GET /content/texts` - List texts by level
-- `GET /content/texts/{id}` - Get text + sentences
-- `GET /content/texts/{id}/audio/{voiceId}` - Get audio URL
-- `GET /content/texts/{id}/timing/{voiceId}` - Get sentence timings
-- `GET/PUT/DELETE /profile` - User profile
-- `POST /subscription/verify` - Verify App Store receipt
-- `POST /analytics/events` - Track events
+All endpoints use `/v1/` prefix for versioning.
+
+**Content (iOS — anonymous, no auth):**
+- `GET /v1/content/levels` - List levels with text counts
+- `GET /v1/content/texts` - List texts by level (with preview)
+- `GET /v1/content/texts/{id}` - Get full text + sentences
+- `GET /v1/content/texts/{id}/audio/{voiceId}` - Get audio file
+- `GET /v1/content/texts/{id}/timing/{voiceId}` - Get sentence timings
+- `GET /v1/app/version` - Get minimum required app version
+
+**Subscription:**
+- `POST /v1/webhooks/revenuecat` - RevenueCat webhook (subscription events)
+
+**Analytics:**
+- `POST /v1/analytics/events` - Track anonymous events
 
 **Admin (Web Panel):**
-- `POST /admin/auth/login` - Email/password login
-- `GET/POST /admin/texts` - List/create texts
-- `GET/PUT/DELETE /admin/texts/{id}` - Manage text
-- `POST /admin/texts/{id}/restore` - Restore soft-deleted
-- `POST/PUT/DELETE /admin/texts/{id}/voices/{voiceId}` - Manage voices
+- `POST /v1/admin/auth/login` - Email/password login
+- `POST /v1/admin/auth/logout` - Logout
+- `GET /v1/admin/texts` - List all texts (with filters)
+- `POST /v1/admin/texts` - Create text
+- `GET /v1/admin/texts/{id}` - Get text details
+- `PUT /v1/admin/texts/{id}` - Update text
+- `DELETE /v1/admin/texts/{id}` - Soft delete
+- `POST /v1/admin/texts/{id}/restore` - Restore soft-deleted
+- `POST /v1/admin/texts/{id}/voices` - Add voice variant
+- `PUT /v1/admin/texts/{id}/voices/{voiceId}` - Update voice
+- `DELETE /v1/admin/texts/{id}/voices/{voiceId}` - Remove voice
 
 ## Security Considerations
 
-- **User Auth**: Sign in with Apple only (no email/password for users)
+- **User Auth**: None — users are anonymous (no accounts in MVP)
+- **Subscriptions**: Managed via RevenueCat (tied to Apple ID, not app accounts)
 - **Admin Auth**: Email/password with JWT
-- **Anonymous Access**: Free texts accessible without auth
-- **Subscription**: Required for full library access
+- **Content Access**: Free texts open to all; subscription checked via RevenueCat SDK
 - **Age Restriction**: 13+ only (no COPPA)
-- **Data Storage**: Progress on-device, profile server-side
+- **Data Storage**: All user data on-device only (progress, preferences)
 - **Soft Delete**: 30-day retention before hard delete
 
 ## Testing
@@ -165,6 +176,6 @@ Before committing API changes:
 ## Current Status
 
 See @TODO.md for progress. Specification phase complete:
-- SPECIFICATION.md v1.0 done
-- OpenAPI v1.0 done (25 endpoints)
-- Next: Agent infrastructure + project scaffolding
+- SPECIFICATION.md v1.3 done (navigation, onboarding, settings, device support, CI/CD, API versioning)
+- OpenAPI needs update to match v1.3 spec (add /v1/ prefix, app version endpoint)
+- Next: Update OpenAPI, agent infrastructure + project scaffolding

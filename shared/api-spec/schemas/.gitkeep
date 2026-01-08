@@ -1,0 +1,2 @@
+# Additional JSON schemas can be placed here
+# These can be referenced from openapi.yaml using $ref

@@ -9,8 +9,18 @@ openapi: 3.1.0
 
 info:
   title: Rafff API
-  description: Content management and user interaction API
-  version: 0.1.0
+  description: |
+    Language learning app API for shadowing technique practice.
+
+    ## Authentication
+    - **User Auth**: Sign in with Apple (required for subscription)
+    - **Admin Auth**: Email/password
+    - **Anonymous Access**: Free content accessible without auth
+
+    ## Content Access
+    - Free texts: No auth required
+    - Full library: Requires active subscription
+  version: 1.0.0
   contact:
     name: Rafff Team
 
@@ -24,9 +34,19 @@ tags:
   - name: health
     description: Health check endpoints
   - name: auth
-    description: Authentication and registration
+    description: User authentication (Sign in with Apple)
   - name: content
-    description: Content management
+    description: Text and audio content
+  - name: profile
+    description: User profile management
+  - name: subscription
+    description: Subscription verification
+  - name: admin-auth
+    description: Admin authentication
+  - name: admin-content
+    description: Admin content management
+  - name: analytics
+    description: Event tracking
 
 # =============================================================================
 # PATHS
@@ -41,6 +61,7 @@ paths:
       operationId: getHealth
       summary: Health check
       tags: [health]
+      security: []
       responses:
         '200':
           description: Service is healthy
@@ -50,59 +71,616 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
 
   # ---------------------------------------------------------------------------
-  # Auth (placeholder - expand as spec develops)
+  # User Auth (Sign in with Apple)
   # ---------------------------------------------------------------------------
-  /auth/register:
+  /auth/apple:
     post:
-      operationId: register
-      summary: Register new user
+      operationId: authenticateWithApple
+      summary: Authenticate with Apple ID
+      description: Exchange Apple identity token for API access token
       tags: [auth]
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: '#/components/schemas/AppleAuthRequest'
       responses:
-        '201':
-          description: User registered successfully
+        '200':
+          description: Authentication successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/UserAuthResponse'
+        '400':
+          description: Invalid Apple token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Refresh access token
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAuthResponse'
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      operationId: logout
+      summary: Logout and invalidate tokens
+      tags: [auth]
+      responses:
+        '204':
+          description: Logged out successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ---------------------------------------------------------------------------
+  # Content (Public + Authenticated)
+  # ---------------------------------------------------------------------------
+  /content/levels:
+    get:
+      operationId: getLevels
+      summary: Get all content levels with counts
+      tags: [content]
+      security: []
+      responses:
+        '200':
+          description: List of levels
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LevelsResponse'
+
+  /content/texts:
+    get:
+      operationId: getTexts
+      summary: List texts for a level
+      description: |
+        Returns texts for the specified level.
+        - Anonymous users see only free texts
+        - Authenticated users with subscription see all texts
+      tags: [content]
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - name: level
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/Level'
+        - name: filter
+          in: query
+          description: Filter by status (requires auth for progress data)
+          schema:
+            type: string
+            enum: [all, in_progress, completed]
+            default: all
+      responses:
+        '200':
+          description: List of texts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TextListResponse'
+        '400':
+          description: Invalid level
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /content/texts/{textId}:
+    get:
+      operationId: getText
+      summary: Get text with sentences and voices
+      description: |
+        Returns full text content including sentences and available voices.
+        Requires subscription or text must be marked as free.
+      tags: [content]
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TextId'
+      responses:
+        '200':
+          description: Text details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TextDetailResponse'
+        '403':
+          description: Subscription required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /content/texts/{textId}/audio/{voiceId}:
+    get:
+      operationId: getAudioUrl
+      summary: Get audio file URL for a voice
+      description: Returns a signed URL for downloading the audio file
+      tags: [content]
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TextId'
+        - $ref: '#/components/parameters/VoiceId'
+      responses:
+        '200':
+          description: Audio URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioUrlResponse'
+        '403':
+          description: Subscription required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /content/texts/{textId}/timing/{voiceId}:
+    get:
+      operationId: getTiming
+      summary: Get sentence timing data for a voice
+      tags: [content]
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TextId'
+        - $ref: '#/components/parameters/VoiceId'
+      responses:
+        '200':
+          description: Timing data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimingResponse'
+        '403':
+          description: Subscription required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ---------------------------------------------------------------------------
+  # Profile
+  # ---------------------------------------------------------------------------
+  /profile:
+    get:
+      operationId: getProfile
+      summary: Get current user profile
+      tags: [profile]
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      operationId: updateProfile
+      summary: Update user profile
+      tags: [profile]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
         '400':
           description: Validation error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: User already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
-  /auth/login:
+    delete:
+      operationId: deleteProfile
+      summary: Delete user account and data
+      description: Permanently deletes user profile (GDPR compliance)
+      tags: [profile]
+      responses:
+        '204':
+          description: Account deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ---------------------------------------------------------------------------
+  # Subscription
+  # ---------------------------------------------------------------------------
+  /subscription/verify:
     post:
-      operationId: login
-      summary: Login user
-      tags: [auth]
+      operationId: verifySubscription
+      summary: Verify App Store receipt
+      description: Validates App Store receipt and updates subscription status
+      tags: [subscription]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: '#/components/schemas/VerifyReceiptRequest'
+      responses:
+        '200':
+          description: Subscription verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionStatus'
+        '400':
+          description: Invalid receipt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /subscription/status:
+    get:
+      operationId: getSubscriptionStatus
+      summary: Get current subscription status
+      tags: [subscription]
+      responses:
+        '200':
+          description: Subscription status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ---------------------------------------------------------------------------
+  # Analytics
+  # ---------------------------------------------------------------------------
+  /analytics/events:
+    post:
+      operationId: trackEvents
+      summary: Track analytics events
+      description: Batch endpoint for tracking app events
+      tags: [analytics]
+      security:
+        - {}
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackEventsRequest'
+      responses:
+        '202':
+          description: Events accepted
+        '400':
+          description: Invalid event data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------------------------------------------------------------------------
+  # Admin Auth
+  # ---------------------------------------------------------------------------
+  /admin/auth/login:
+    post:
+      operationId: adminLogin
+      summary: Admin login
+      tags: [admin-auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
       responses:
         '200':
           description: Login successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/AdminAuthResponse'
         '401':
           description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/auth/logout:
+    post:
+      operationId: adminLogout
+      summary: Admin logout
+      tags: [admin-auth]
+      security:
+        - adminBearerAuth: []
+      responses:
+        '204':
+          description: Logged out
+
+  # ---------------------------------------------------------------------------
+  # Admin Content Management
+  # ---------------------------------------------------------------------------
+  /admin/texts:
+    get:
+      operationId: adminListTexts
+      summary: List all texts (including soft-deleted)
+      tags: [admin-content]
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: level
+          in: query
+          schema:
+            $ref: '#/components/schemas/Level'
+        - name: includeDeleted
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of texts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTextListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      operationId: adminCreateText
+      summary: Create new text
+      tags: [admin-content]
+      security:
+        - adminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTextRequest'
+      responses:
+        '201':
+          description: Text created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminText'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/texts/{textId}:
+    get:
+      operationId: adminGetText
+      summary: Get text details
+      tags: [admin-content]
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TextId'
+      responses:
+        '200':
+          description: Text details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTextDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      operationId: adminUpdateText
+      summary: Update text
+      tags: [admin-content]
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TextId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTextRequest'
+      responses:
+        '200':
+          description: Text updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminText'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      operationId: adminDeleteText
+      summary: Soft delete text
+      description: Marks text as deleted. Will be hard-deleted after 30 days.
+      tags: [admin-content]
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TextId'
+      responses:
+        '204':
+          description: Text soft-deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/texts/{textId}/restore:
+    post:
+      operationId: adminRestoreText
+      summary: Restore soft-deleted text
+      tags: [admin-content]
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TextId'
+      responses:
+        '200':
+          description: Text restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminText'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Text is not deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/texts/{textId}/voices:
+    post:
+      operationId: adminAddVoice
+      summary: Add voice variant to text
+      description: Upload audio file and timing data for a new voice
+      tags: [admin-content]
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TextId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AddVoiceRequest'
+      responses:
+        '201':
+          description: Voice added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Voice'
+        '400':
+          description: Invalid file format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/texts/{textId}/voices/{voiceId}:
+    put:
+      operationId: adminUpdateVoice
+      summary: Update voice metadata
+      tags: [admin-content]
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TextId'
+        - $ref: '#/components/parameters/VoiceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVoiceRequest'
+      responses:
+        '200':
+          description: Voice updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Voice'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      operationId: adminDeleteVoice
+      summary: Delete voice from text
+      tags: [admin-content]
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TextId'
+        - $ref: '#/components/parameters/VoiceId'
+      responses:
+        '204':
+          description: Voice deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Cannot delete last voice
           content:
             application/json:
               schema:
@@ -121,7 +699,53 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT token from login/register
+      description: User JWT from Sign in with Apple
+
+    adminBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Admin JWT from email/password login
+
+  # ---------------------------------------------------------------------------
+  # Parameters
+  # ---------------------------------------------------------------------------
+  parameters:
+    TextId:
+      name: textId
+      in: path
+      required: true
+      description: Text unique identifier
+      schema:
+        type: string
+        format: uuid
+
+    VoiceId:
+      name: voiceId
+      in: path
+      required: true
+      description: Voice unique identifier
+      schema:
+        type: string
+        format: uuid
+
+  # ---------------------------------------------------------------------------
+  # Responses
+  # ---------------------------------------------------------------------------
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
 
   # ---------------------------------------------------------------------------
   # Schemas
@@ -143,7 +767,7 @@ components:
         message:
           type: string
           description: Human-readable error message
-          example: Email is required
+          example: Invalid request data
 
     HealthResponse:
       type: object
@@ -160,65 +784,116 @@ components:
           format: date-time
         version:
           type: string
-          example: 0.1.0
+          example: 1.0.0
 
     # -------------------------------------------------------------------------
-    # Auth
+    # Enums
     # -------------------------------------------------------------------------
-    RegisterRequest:
-      type: object
-      required:
-        - email
-        - password
-      properties:
-        email:
-          type: string
-          format: email
-          example: user@example.com
-        password:
-          type: string
-          format: password
-          minLength: 8
-          example: securePassword123
+    Level:
+      type: string
+      enum: [beginner, intermediate_plus, advanced]
+      description: Content difficulty level
 
-    LoginRequest:
-      type: object
-      required:
-        - email
-        - password
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          format: password
+    SubscriptionPlan:
+      type: string
+      enum: [free, trial, monthly, yearly]
 
-    AuthResponse:
+    SubscriptionState:
+      type: string
+      enum: [active, expired, canceled, grace_period]
+
+    EventType:
+      type: string
+      enum:
+        - app_open
+        - session_start
+        - text_started
+        - text_completed
+        - subscription_trial_started
+        - subscription_converted
+        - subscription_canceled
+        - audio_load_failed
+        - download_success
+        - download_failed
+
+    # -------------------------------------------------------------------------
+    # User Auth
+    # -------------------------------------------------------------------------
+    AppleAuthRequest:
       type: object
       required:
+        - identityToken
+        - authorizationCode
+      properties:
+        identityToken:
+          type: string
+          description: JWT identity token from Sign in with Apple
+        authorizationCode:
+          type: string
+          description: Authorization code from Sign in with Apple
+        fullName:
+          type: object
+          description: User's full name (only provided on first sign-in)
+          properties:
+            givenName:
+              type: string
+            familyName:
+              type: string
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+
+    UserAuthResponse:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
         - user
-        - token
       properties:
-        user:
-          $ref: '#/components/schemas/User'
-        token:
+        accessToken:
           type: string
           description: JWT access token
+        refreshToken:
+          type: string
+          description: Refresh token for obtaining new access tokens
+        expiresIn:
+          type: integer
+          description: Access token expiration in seconds
+          example: 3600
+        user:
+          $ref: '#/components/schemas/UserProfile'
 
-    User:
+    # -------------------------------------------------------------------------
+    # Profile
+    # -------------------------------------------------------------------------
+    UserProfile:
       type: object
       required:
         - id
-        - email
         - createdAt
       properties:
         id:
           type: string
           format: uuid
-        email:
+        name:
           type: string
-          format: email
+          maxLength: 100
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 country code
+          pattern: '^[A-Z]{2}$'
+          example: US
+        age:
+          type: integer
+          minimum: 13
+          maximum: 150
+        englishLevel:
+          $ref: '#/components/schemas/Level'
         createdAt:
           type: string
           format: date-time
@@ -226,8 +901,483 @@ components:
           type: string
           format: date-time
 
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        country:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        age:
+          type: integer
+          minimum: 13
+          maximum: 150
+        englishLevel:
+          $ref: '#/components/schemas/Level'
+
+    # -------------------------------------------------------------------------
+    # Content
+    # -------------------------------------------------------------------------
+    LevelInfo:
+      type: object
+      required:
+        - level
+        - totalTexts
+        - freeTexts
+      properties:
+        level:
+          $ref: '#/components/schemas/Level'
+        totalTexts:
+          type: integer
+          description: Total number of texts at this level
+        freeTexts:
+          type: integer
+          description: Number of free texts at this level
+
+    LevelsResponse:
+      type: object
+      required:
+        - levels
+      properties:
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/LevelInfo'
+
+    TextListItem:
+      type: object
+      required:
+        - id
+        - title
+        - level
+        - isFree
+        - isNew
+        - voiceCount
+        - wordCount
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        level:
+          $ref: '#/components/schemas/Level'
+        isFree:
+          type: boolean
+          description: Whether this text is free forever
+        isNew:
+          type: boolean
+          description: Recently added (within 7 days)
+        voiceCount:
+          type: integer
+          minimum: 1
+          description: Number of voice variants available
+        wordCount:
+          type: integer
+          description: Approximate word count
+
+    TextListResponse:
+      type: object
+      required:
+        - texts
+      properties:
+        texts:
+          type: array
+          items:
+            $ref: '#/components/schemas/TextListItem'
+
+    Sentence:
+      type: object
+      required:
+        - index
+        - text
+      properties:
+        index:
+          type: integer
+          description: Zero-based sentence index
+        text:
+          type: string
+          description: Sentence text content
+
+    Voice:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Voice display name
+          example: Sarah (Female)
+        description:
+          type: string
+          description: Additional voice description
+
+    TextDetailResponse:
+      type: object
+      required:
+        - id
+        - title
+        - level
+        - isFree
+        - sentences
+        - voices
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        level:
+          $ref: '#/components/schemas/Level'
+        isFree:
+          type: boolean
+        sentences:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sentence'
+        voices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Voice'
+          minItems: 1
+
+    AudioUrlResponse:
+      type: object
+      required:
+        - url
+        - expiresAt
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Signed URL for audio download
+        expiresAt:
+          type: string
+          format: date-time
+          description: URL expiration time
+        contentType:
+          type: string
+          example: audio/aac
+        fileSize:
+          type: integer
+          description: File size in bytes
+
+    SentenceTiming:
+      type: object
+      required:
+        - text
+        - start
+        - end
+      properties:
+        text:
+          type: string
+          description: Sentence text (for verification)
+        start:
+          type: number
+          format: float
+          description: Start time in seconds
+        end:
+          type: number
+          format: float
+          description: End time in seconds
+
+    TimingResponse:
+      type: object
+      required:
+        - sentences
+      properties:
+        sentences:
+          type: array
+          items:
+            $ref: '#/components/schemas/SentenceTiming'
+
+    # -------------------------------------------------------------------------
+    # Subscription
+    # -------------------------------------------------------------------------
+    VerifyReceiptRequest:
+      type: object
+      required:
+        - receiptData
+      properties:
+        receiptData:
+          type: string
+          description: Base64-encoded App Store receipt
+        transactionId:
+          type: string
+          description: StoreKit 2 transaction ID
+
+    SubscriptionStatus:
+      type: object
+      required:
+        - plan
+        - state
+        - hasFullAccess
+      properties:
+        plan:
+          $ref: '#/components/schemas/SubscriptionPlan'
+        state:
+          $ref: '#/components/schemas/SubscriptionState'
+        hasFullAccess:
+          type: boolean
+          description: Whether user has access to full library
+        expiresAt:
+          type: string
+          format: date-time
+          description: Subscription expiration date
+        trialEndsAt:
+          type: string
+          format: date-time
+          description: Trial end date (if in trial)
+        willRenew:
+          type: boolean
+          description: Whether subscription will auto-renew
+
+    # -------------------------------------------------------------------------
+    # Analytics
+    # -------------------------------------------------------------------------
+    AnalyticsEvent:
+      type: object
+      required:
+        - type
+        - timestamp
+      properties:
+        type:
+          $ref: '#/components/schemas/EventType'
+        timestamp:
+          type: string
+          format: date-time
+        textId:
+          type: string
+          format: uuid
+          description: Related text ID (for text events)
+        metadata:
+          type: object
+          description: Additional event data
+          additionalProperties: true
+
+    TrackEventsRequest:
+      type: object
+      required:
+        - events
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyticsEvent'
+          maxItems: 100
+        deviceId:
+          type: string
+          description: Anonymous device identifier for non-authenticated users
+
+    # -------------------------------------------------------------------------
+    # Admin Auth
+    # -------------------------------------------------------------------------
+    AdminLoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AdminAuthResponse:
+      type: object
+      required:
+        - accessToken
+        - admin
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token
+        expiresIn:
+          type: integer
+          description: Token expiration in seconds
+        admin:
+          $ref: '#/components/schemas/AdminUser'
+
+    AdminUser:
+      type: object
+      required:
+        - id
+        - email
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+
+    # -------------------------------------------------------------------------
+    # Admin Content
+    # -------------------------------------------------------------------------
+    AdminText:
+      type: object
+      required:
+        - id
+        - title
+        - level
+        - isFree
+        - voiceCount
+        - createdAt
+        - isDeleted
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        level:
+          $ref: '#/components/schemas/Level'
+        isFree:
+          type: boolean
+        voiceCount:
+          type: integer
+        wordCount:
+          type: integer
+        isDeleted:
+          type: boolean
+        deletedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AdminTextDetail:
+      allOf:
+        - $ref: '#/components/schemas/AdminText'
+        - type: object
+          required:
+            - content
+            - voices
+          properties:
+            content:
+              type: string
+              description: Full text content
+            voices:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminVoice'
+
+    AdminVoice:
+      allOf:
+        - $ref: '#/components/schemas/Voice'
+        - type: object
+          required:
+            - audioUrl
+            - createdAt
+          properties:
+            audioUrl:
+              type: string
+              format: uri
+            audioSize:
+              type: integer
+              description: File size in bytes
+            audioDuration:
+              type: number
+              format: float
+              description: Duration in seconds
+            createdAt:
+              type: string
+              format: date-time
+
+    AdminTextListResponse:
+      type: object
+      required:
+        - texts
+        - total
+      properties:
+        texts:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminText'
+        total:
+          type: integer
+
+    CreateTextRequest:
+      type: object
+      required:
+        - title
+        - level
+        - content
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        level:
+          $ref: '#/components/schemas/Level'
+        content:
+          type: string
+          description: Full text content (sentences will be auto-parsed)
+          minLength: 1
+        isFree:
+          type: boolean
+          default: false
+
+    UpdateTextRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        level:
+          $ref: '#/components/schemas/Level'
+        content:
+          type: string
+          minLength: 1
+        isFree:
+          type: boolean
+
+    AddVoiceRequest:
+      type: object
+      required:
+        - name
+        - audioFile
+        - timingFile
+      properties:
+        name:
+          type: string
+          description: Voice display name
+        description:
+          type: string
+        audioFile:
+          type: string
+          format: binary
+          description: Audio file (AAC format)
+        timingFile:
+          type: string
+          format: binary
+          description: Timing JSON file (Whisper format)
+
+    UpdateVoiceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
 # =============================================================================
-# Security (default for all endpoints except health)
+# Security (default for authenticated endpoints)
 # =============================================================================
 security:
   - bearerAuth: []

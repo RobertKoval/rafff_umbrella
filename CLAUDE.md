@@ -1,13 +1,24 @@
-# Rafff Umbrella - Agent Context
+# Rafff - Umbrella Repository
 
-> **IMPORTANT:** This is the **umbrella orchestration repo**. You have access to shared API specs and can coordinate between backend and iOS, but **do NOT implement features directly in submodules**. Each submodule has its own CLAUDE.md and local Ralph agent.
+> Language learning iOS app focused on the **shadowing technique**.
 
-## Project Overview
+## Overview
 
-Rafff is a content management system with:
-- **Backend** (`raff_backend/`): Next.js + React admin panel, API server
-- **iOS Client** (`raff_iOS/`): SwiftUI 18+ mobile app
-- **Shared Contracts** (`shared/api-spec/`): OpenAPI 3.1 specifications
+This is the **umbrella orchestration repository** that coordinates between backend and iOS development. You manage API contracts and cross-stack alignment but do **NOT** implement features directly in submodules.
+
+**What is Rafff?** Users listen to audio, read along with highlighted text, and repeat aloud to practice pronunciation. Highlighting follows audio playback timing (no speech recognition in MVP).
+
+See @SPECIFICATION.md for full product requirements.
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| **Backend** | Next.js 16, Prisma 7, Zod 4, Tailwind, shadcn/ui |
+| **iOS** | SwiftUI, TCA (The Composable Architecture), iOS 18+ |
+| **API Contract** | OpenAPI 3.1 (`shared/api-spec/openapi.yaml`) |
+| **Testing** | Vitest, Playwright, Stryker (backend) / Swift Testing, Mutter (iOS) |
+| **Deployment** | Docker on VPS |
 
 ## Architecture
 
@@ -15,59 +26,48 @@ Rafff is a content management system with:
 ┌─────────────────────────────────────────────────────────────────┐
 │                     UMBRELLA (this repo)                        │
 │  • API spec management (shared/api-spec/openapi.yaml)           │
-│  • Type generation orchestration                                 │
-│  • Cross-stack alignment and coordination                        │
-│  • Specification and documentation                               │
-├─────────────────────────────────────────────────────────────────┤
-│  raff_backend/ (submodule)    │  raff_iOS/ (submodule)          │
-│  • Next.js implementation     │  • SwiftUI implementation        │
-│  • Has own CLAUDE.md          │  • Has own CLAUDE.md             │
-│  • Has own Ralph agent        │  • Has own Ralph agent           │
-│  • Implements API endpoints   │  • Consumes API endpoints        │
+│  • Type generation orchestration                                │
+│  • Cross-stack alignment and coordination                       │
 └─────────────────────────────────────────────────────────────────┘
+        │                                   │
+        ▼                                   ▼
+┌───────────────────────┐       ┌───────────────────────┐
+│  raff_backend/        │       │  raff_iOS/            │
+│  (submodule)          │       │  (submodule)          │
+│  • Next.js server     │       │  • SwiftUI client     │
+│  • Admin panel        │       │  • TCA architecture   │
+│  • Has own CLAUDE.md  │       │  • Has own CLAUDE.md  │
+└───────────────────────┘       └───────────────────────┘
 ```
 
-## Your Role (Umbrella Agent)
+## Your Responsibilities
 
-You are responsible for:
-1. **API Contract Design** - Update `shared/api-spec/openapi.yaml`
-2. **Type Generation** - Run `./scripts/generate-types.sh` after API changes
-3. **Specification** - Maintain `SPECIFICATION.md` alignment
-4. **Cross-Stack Review** - Ensure backend and iOS are aligned
-5. **Documentation** - Keep README.md and docs current
+**DO:**
+- Design/update API contracts in `shared/api-spec/openapi.yaml`
+- Run `./scripts/validate-api.sh` after spec changes
+- Run `./scripts/generate-types.sh` to regenerate types
+- Maintain `SPECIFICATION.md` alignment
+- Coordinate cross-stack changes
 
-You should **NOT**:
-- Implement features in `raff_backend/` or `raff_iOS/` (local Ralphs do this)
-- Commit directly to submodule repos (coordinate via umbrella)
-- Skip type regeneration after API spec changes
+**DO NOT:**
+- Implement features in submodules (local agents do this)
+- Commit directly to submodule repos
+- Skip type regeneration after API changes
 
-## Commands
+## Common Commands
 
-### Development
 ```bash
-# Validate OpenAPI spec
+# Validate OpenAPI spec (run after every change)
 ./scripts/validate-api.sh
 
 # Generate TypeScript + Swift types from OpenAPI
 ./scripts/generate-types.sh
 
-# Sync submodules to latest from their origins
+# Sync submodules to latest
 ./scripts/sync-submodules.sh
 
-# Sync with --commit flag to auto-commit updated refs
-./scripts/sync-submodules.sh --commit
-```
-
-### Git (Submodules)
-```bash
-# Pull latest umbrella + submodule refs
+# Pull umbrella + update submodules
 git pull && git submodule update --init --recursive
-
-# Update submodules to their latest remote commits
-git submodule update --remote
-
-# Check submodule status
-git submodule status
 ```
 
 ## Key Files
@@ -75,33 +75,31 @@ git submodule status
 | File | Purpose |
 |------|---------|
 | `shared/api-spec/openapi.yaml` | **Source of truth** for API contracts |
-| `SPECIFICATION.md` | Product specification |
+| `SPECIFICATION.md` | Product specification (v1.0 complete) |
 | `TODO.md` | Project progress checklist |
-| `README.md` | Architecture decisions, commands |
-| `raff_backend/` | Backend submodule (Next.js) |
-| `raff_iOS/` | iOS submodule (SwiftUI) |
 
 ## API Contract Workflow
 
-When adding/modifying API endpoints:
+When adding/modifying endpoints:
 
-1. **Edit** `shared/api-spec/openapi.yaml`
-2. **Validate** with `./scripts/validate-api.sh`
-3. **Generate types** with `./scripts/generate-types.sh`
-4. **Commit** changes to umbrella
-5. **Notify** that Backend Ralph and iOS Ralph can implement
+1. Edit `shared/api-spec/openapi.yaml`
+2. Validate: `./scripts/validate-api.sh`
+3. Generate types: `./scripts/generate-types.sh`
+4. Commit to umbrella
+5. Notify backend/iOS agents to implement
 
-### OpenAPI Style Guide
+### OpenAPI Style
+
 - Use `operationId` for all endpoints (becomes function names)
-- Group endpoints with `tags`
-- Define all schemas in `components/schemas`
+- Group with `tags`
+- Define schemas in `components/schemas`
 - Include `required` arrays for all objects
-- Add `description` for non-obvious fields
-- Use `format` hints (`uuid`, `email`, `date-time`, etc.)
+- Use `format` hints: `uuid`, `email`, `date-time`
 
-## Code Style
+## Code Conventions
 
-### Commit Messages
+### Commits
+
 Use conventional commits with scope:
 ```
 feat(api): add user profile endpoint
@@ -110,42 +108,63 @@ docs: update README with new commands
 chore: sync submodule refs
 ```
 
-### File Naming
-- OpenAPI schemas: `PascalCase` (e.g., `UserProfile`, `AuthResponse`)
-- Scripts: `kebab-case.sh` (e.g., `generate-types.sh`)
-- Documentation: `SCREAMING_CASE.md` or `Title Case.md`
+### Naming
 
-## Coordination Patterns
+- OpenAPI schemas: `PascalCase` (`UserProfile`, `AuthResponse`)
+- Scripts: `kebab-case.sh` (`generate-types.sh`)
+- Documentation: `SCREAMING_CASE.md`
 
-### Adding a New Feature
-1. Design API contract in `openapi.yaml`
-2. Run type generation
-3. Update SPECIFICATION.md with feature description
-4. Backend Ralph implements endpoint
-5. iOS Ralph implements client UI
-6. Umbrella agent verifies alignment
+## Domain Glossary
 
-### Fixing API Mismatch
-1. Check `openapi.yaml` for source of truth
-2. Regenerate types
-3. Identify which side (backend or iOS) drifted
-4. Coordinate fix with appropriate Ralph
+| Term | Definition |
+|------|------------|
+| **Shadowing** | Language learning technique: listen, read highlighted text, repeat aloud |
+| **Sentence Timing** | JSON with start/end timestamps per sentence (Whisper-extracted) |
+| **Voice Variant** | Different TTS voice for same text (min 2 per text) |
+| **Level** | Content difficulty: `beginner`, `intermediate_plus`, `advanced` |
+| **Free Text** | Admin-flagged text accessible without subscription |
+
+## API Endpoints Summary
+
+**User-facing (iOS):**
+- `POST /auth/apple` - Sign in with Apple
+- `GET /content/levels` - List levels
+- `GET /content/texts` - List texts by level
+- `GET /content/texts/{id}` - Get text + sentences
+- `GET /content/texts/{id}/audio/{voiceId}` - Get audio URL
+- `GET /content/texts/{id}/timing/{voiceId}` - Get sentence timings
+- `GET/PUT/DELETE /profile` - User profile
+- `POST /subscription/verify` - Verify App Store receipt
+- `POST /analytics/events` - Track events
+
+**Admin (Web Panel):**
+- `POST /admin/auth/login` - Email/password login
+- `GET/POST /admin/texts` - List/create texts
+- `GET/PUT/DELETE /admin/texts/{id}` - Manage text
+- `POST /admin/texts/{id}/restore` - Restore soft-deleted
+- `POST/PUT/DELETE /admin/texts/{id}/voices/{voiceId}` - Manage voices
+
+## Security Considerations
+
+- **User Auth**: Sign in with Apple only (no email/password for users)
+- **Admin Auth**: Email/password with JWT
+- **Anonymous Access**: Free texts accessible without auth
+- **Subscription**: Required for full library access
+- **Age Restriction**: 13+ only (no COPPA)
+- **Data Storage**: Progress on-device, profile server-side
+- **Soft Delete**: 30-day retention before hard delete
 
 ## Testing
 
 Before committing API changes:
 ```bash
-# Must pass
-./scripts/validate-api.sh
-
-# Should succeed (may fail if submodules not set up yet)
-./scripts/generate-types.sh
+./scripts/validate-api.sh  # Must pass
+./scripts/generate-types.sh  # Should succeed
 ```
 
-## Remember
+## Current Status
 
-- **You coordinate, Ralphs implement**
-- **OpenAPI is the contract** - backend and iOS derive from it
-- **Regenerate types after ANY openapi.yaml change**
-- **Check TODO.md** for current project status
-- **Read SPECIFICATION.md** before designing new APIs
+See @TODO.md for progress. Specification phase complete:
+- SPECIFICATION.md v1.0 done
+- OpenAPI v1.0 done (25 endpoints)
+- Next: Agent infrastructure + project scaffolding
